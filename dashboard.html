@@ -339,7 +339,8 @@
             const rsiValues = {};
             Object.keys(OANDA_TIME_FRAMES).forEach((tf, idx) => {
                 const candles = (rsiCandles[idx].candles || []).filter(c => c.complete);
-                const closes = candles.map(c => parseFloat(c.mid.c)).reverse(); // oldest first
+                // OANDA already returns candles oldest -> newest; keep order as-is
+                const closes = candles.map(c => parseFloat(c.mid.c));
                 rsiValues[tf] = calculateRSI(closes);
             });
 
