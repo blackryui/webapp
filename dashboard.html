@@ -109,8 +109,12 @@
     // --- OANDA API CREDENTIALS ---
     // Replace with your real values
     const OANDA_ACCOUNT_ID = 'YOUR_OANDA_ACCOUNT_ID';
-    const OANDA_API_KEY = 'YOUR_OANDA_API_KEY';
-    const OANDA_API_URL = "https://api-fxtrade.oanda.com/v3";
+    const OANDA_API_KEY    = 'YOUR_OANDA_API_KEY';
+    // Set to 'practice' for demo / paper accounts or 'live' for real accounts
+    const OANDA_ENV        = 'practice'; // 'practice' | 'live'
+    const OANDA_API_URL    = OANDA_ENV === 'live'
+        ? 'https://api-fxtrade.oanda.com/v3'
+        : 'https://api-fxpractice.oanda.com/v3';
     const OANDA_TIME_FRAMES = { H1: 'H1', H4: 'H4', D: 'D', W: 'W' };
     const BINANCE_TIME_FRAMES = { H1: '1h', H4: '4h', D: '1d', W: '1w' };
 
@@ -200,7 +204,7 @@
                     <td class="px-3 py-1 text-right font-semibold ${changeClass}">${formatPercentChange(data.percentChange)}</td>
                     <td class="px-3 py-1 text-right font-semibold ${ytdChangeClass}">${data.ytdChange !== null ? data.ytdChange.toFixed(2) + '%' : 'N/A'}</td>
                     ${Object.keys(BINANCE_TIME_FRAMES).map(tf => `<td class="px-3 py-1 text-center"><span class="font-semibold ${getRsiClass(data.rsi[tf])}">${data.rsi[tf] !== null ? data.rsi[tf].toFixed(1) : '-'}</span></td>`).join('')}
-                    <td class="px-3 py-1"><div class="flex items-center justify-center space-x-1"><button onclick="moveSymbol('${symbol}', -1)" class="action-btn text-gray-500 hover:text-blue-600" title="เลื่อนขึ้น" ${index === 0 ? 'disabled' : ''}><ion-icon name="arrow-up-circle-outline" class="text-base"></ion-icon></button><button onclick="moveSymbol('${symbol}', 1)" class="action-btn text-gray-500 hover:text-blue-600" title="เลื่อนลง" ${index === symbolsOrder.length - 1 ? 'disabled' : ''}><ion-icon name="arrow-down-circle-outline" class="text-base"></ion-icon></button><button onclick="removeSymbol('${symbol}')}" class="action-btn text-gray-500 hover:text-red-600" title="ลบ"><ion-icon name="trash-outline" class="text-base"></ion-icon></button></div></td>`;
+                    <td class="px-3 py-1"><div class="flex items-center justify-center space-x-1"><button onclick="moveSymbol('${symbol}', -1)" class="action-btn text-gray-500 hover:text-blue-600" title="เลื่อนขึ้น" ${index === 0 ? 'disabled' : ''}><ion-icon name="arrow-up-circle-outline" class="text-base"></ion-icon></button><button onclick="moveSymbol('${symbol}', 1)" class="action-btn text-gray-500 hover:text-blue-600" title="เลื่อนลง" ${index === symbolsOrder.length - 1 ? 'disabled' : ''}><ion-icon name="arrow-down-circle-outline" class="text-base"></ion-icon></button><button onclick="removeSymbol('${symbol}')" class="action-btn text-gray-500 hover:text-red-600" title="ลบ"><ion-icon name="trash-outline" class="text-base"></ion-icon></button></div></td>`;
             } else {
                 row.innerHTML = `
                     <td class="px-3 py-1 font-bold text-gray-900"><div class="flex items-center space-x-2"><span>${symbol.replace('_', '/')}</span>${sourceTag}</div></td>
