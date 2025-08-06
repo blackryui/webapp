@@ -1,14 +1,330 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <base target="_top">
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loki Map and Search</title>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto & Forex Dashboard</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Ionicons -->
+  <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+
+  <style>
+    body { font-family: 'Sarabun', sans-serif; transition: font-size .2s ease-in-out; }
+    .market-row:hover { background-color: rgba(59,130,246,.05); }
+    .up { color:#16a34a; }
+    .down { color:#dc2626; }
+    .neutral { color:#6b7280; }
+    .loading-overlay { position:fixed;inset:0;background:rgba(255,255,255,.8);display:flex;justify-content:center;align-items:center;z-index:1000;backdrop-filter:blur(4px);}    
+    .loading-spinner { border:5px solid rgba(0,0,0,.1);border-radius:50%;border-top:5px solid #3b82f6;width:50px;height:50px;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg);} }
+    .action-btn{background:none;border:none;cursor:pointer;padding:2px;border-radius:50%;transition:background-color .2s;}
+    .action-btn:hover{background:#f3f4f6;}
+    .action-btn:disabled{cursor:not-allowed;opacity:.3;}
+    .action-btn ion-icon{font-size:16px;}
+    .data-source-tag{font-size:.6rem;font-weight:600;padding:1px 4px;border-radius:3px;text-transform:uppercase;}
+    .binance-tag{background:#F0B90B;color:#000;}
+    .oanda-tag{background:#00263A;color:#FFF;}
+    #market-table th,#market-table td{padding-top:.25rem;padding-bottom:.25rem;line-height:1.1;}
+    #market-table{font-size:12px;}
+  </style>
 </head>
-<body>
-    <iframe style="width: 100%; height: 100vh;" scrolling="yes" src="https://script.google.com/macros/s/AKfycbwfq4H2soNZAyn4xUPdfpPMmDX9fOCpgH0Fbsl0vuHFuxBz4rlWsvUY8lzucPoDUWvu2A/exec" frameborder="0"></iframe>
-    <iframe allowtransparency="true" frameborder="0" marginheight="0" marginwidth="0" scrolling="no" src="http://fxrates.investing.com/index.php?pairs_ids=8827;&amp;header-text-color=%23FFFFFF&amp;curr-name-color=%23292929&amp;inner-text-color=%23000000&amp;green-text-color=%232A8215&amp;green-background=%23B7F4C2&amp;red-text-color=%23DC0001&amp;red-background=%23FFE2E2&amp;inner-border-color=%23CBCBCB&amp;border-color=%23cbcbcb&amp;bg1=%23F6F6F6&amp;bg2=%23ffffff&amp;bid=hide&amp;ask=hide&amp;last=show&amp;open=show&amp;high=show&amp;low=show&amp;last_update=show" width="565" height="65"></iframe>
+<body class="bg-gray-100 text-gray-800">
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="text-center">
+      <div class="loading-spinner mb-4"></div>
+      <p id="loading-message" class="text-lg font-semibold text-gray-700">กำลังโหลดข้อมูล...</p>
+    </div>
+  </div>
+
+  <!-- Main container -->
+  <div class="container mx-auto px-4 py-8 max-w-7xl">
+    <div class="flex items-center justify-between gap-4 mb-6 flex-wrap">
+      <h1 class="text-3xl font-bold text-gray-800 flex-shrink-0">Crypto & Forex Dashboard</h1>
+      <div class="flex items-center space-x-2 flex-1 min-w-[250px]">
+        <input id="new-symbol" type="text" placeholder="เพิ่ม Symbol (เช่น BTCUSDT, XAU_USD)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition"/>
+        <button id="add-symbol-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex-shrink-0 font-semibold">เพิ่ม</button>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="font-decrease" title="ลดขนาดตัวอักษร" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-lg transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+        </button>
+        <button id="font-increase" title="เพิ่มขนาดตัวอักษร" class="bg-gray-200 hover:bg-gray-300 text-gray-700 p-2 rounded-lg transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd"/></svg>
+        </button>
+        <button id="refresh-btn" class="flex items-center space-x-2 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition"><ion-icon name="refresh-outline" class="text-xl"></ion-icon></button>
+      </div>
+    </div>
+
+    <!-- Data table -->
+    <div class="bg-white rounded-xl shadow-md p-4 sm:p-6">
+      <div class="overflow-x-auto">
+        <table id="market-table" class="min-w-full">
+          <thead>
+            <tr class="border-b border-gray-200">
+              <th class="px-3 py-1 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Symbol</th>
+              <th class="px-3 py-1 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
+              <th class="px-3 py-1 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Change (24h)</th>
+              <th class="px-3 py-1 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">% YTD</th>
+              <th class="px-3 py-1 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">RSI H1</th>
+              <th class="px-3 py-1 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">RSI H4</th>
+              <th class="px-3 py-1 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">RSI D</th>
+              <th class="px-3 py-1 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">RSI W</th>
+              <th class="px-3 py-1 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="market-data-body" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+      <div class="mt-4 flex justify-between items-center text-xs text-gray-500">
+        <span>Data Sources: Binance & OANDA API</span>
+        <span id="last-update"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- === SCRIPT SECTION ===================================================== -->
+  <script>
+  // --- CONFIGURATION ---------------------------------------------------------
+  const DEFAULT_SYMBOLS = [
+    'XAU_USD','WTICO_USD','USD_CHF','USD_THB', // OANDA
+    'BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','ADAUSDT','DOGEUSDT','SHIBUSDT','GALAUSDT','ZILUSDT','PEPEUSDT','TRUMPUSDT','SUIUSDT','UNIUSDT','LTCUSDT','AVAXUSDT'
+  ];
+  const RSI_PERIOD = 14;
+  const KLINE_LIMIT = 101; // 100 + 1 buffer
+
+  // --- Credentials – injected from Apps Script --------------------------------
+  const OANDA_ACCOUNT_ID = '<?= OANDA_ACCOUNT_ID ?>';
+  const OANDA_API_KEY    = '<?= OANDA_API_KEY ?>';
+  const OANDA_API_URL    = 'https://api-fxtrade.oanda.com/v3';
+  const OANDA_TIME_FRAMES = { H1:'H1', H4:'H4', D:'D', W:'W' };
+  const BINANCE_TIME_FRAMES = { H1:'1h', H4:'4h', D:'1d', W:'1w' };
+
+  // --- STATE ------------------------------------------------------------------
+  let symbolsOrder = [];
+  let fontSize;
+
+  // --- DOM --------------------------------------------------------------------
+  const tableBody        = document.getElementById('market-data-body');
+  const marketTable      = document.getElementById('market-table');
+  const refreshBtn       = document.getElementById('refresh-btn');
+  const addSymbolBtn     = document.getElementById('add-symbol-btn');
+  const newSymbolInput   = document.getElementById('new-symbol');
+  const loadingOverlay   = document.getElementById('loading-overlay');
+  const lastUpdateSpan   = document.getElementById('last-update');
+  const fontIncreaseBtn  = document.getElementById('font-increase');
+  const fontDecreaseBtn  = document.getElementById('font-decrease');
+
+  // --- INITIALISATION ---------------------------------------------------------
+  document.addEventListener('DOMContentLoaded',()=>{
+    initSymbols();
+    initFontSize();
+    setupEvents();
+    fetchMarketData();
+    setInterval(fetchMarketData,60_000); // refresh 60s
+  });
+
+  function initSymbols(){
+    const stored = localStorage.getItem('symbolsOrderV2');
+    symbolsOrder = stored ? JSON.parse(stored) : [...DEFAULT_SYMBOLS];
+    saveSymbols();
+  }
+  function initFontSize(){
+    fontSize = parseInt(localStorage.getItem('fontSize')||'12');
+    updateFontSize();
+  }
+  function setupEvents(){
+    refreshBtn.addEventListener('click',fetchMarketData);
+    addSymbolBtn.addEventListener('click',addSymbol);
+    newSymbolInput.addEventListener('keypress',e=>{ if(e.key==='Enter') addSymbol(); });
+    fontIncreaseBtn.addEventListener('click',()=> changeFontSize(1));
+    fontDecreaseBtn.addEventListener('click',()=> changeFontSize(-1));
+  }
+
+  // --- UI HELPERS -------------------------------------------------------------
+  const showLoading = (msg='กำลังโหลดข้อมูล...') => { document.getElementById('loading-message').textContent=msg; loadingOverlay.classList.remove('hidden'); };
+  const hideLoading = ()=> loadingOverlay.classList.add('hidden');
+
+  function changeFontSize(delta){
+    const newSize = fontSize + delta;
+    if(newSize>=10 && newSize<=20){ fontSize=newSize; localStorage.setItem('fontSize',fontSize); updateFontSize(); }
+  }
+  const updateFontSize = ()=>{ marketTable.style.fontSize=`${fontSize}px`; };
+
+  function saveSymbols(){ localStorage.setItem('symbolsOrderV2',JSON.stringify(symbolsOrder)); }
+
+  // --- CALCULATION HELPERS ----------------------------------------------------
+  function prepareBinanceCloses(kline){
+    if(!Array.isArray(kline)) return [];
+    const now = Date.now();
+    return kline.filter(c=>c[6]<=now).map(c=> parseFloat(c[4])); // 6 closeTime, 4 close
+  }
+  function prepareOandaCloses(candles){
+    if(!Array.isArray(candles)) return [];
+    return candles.filter(c=>c.complete).reverse().map(c=> parseFloat(c.mid.c));
+  }
+  function calculateRSI(closes, period=RSI_PERIOD){
+    if(!Array.isArray(closes) || closes.length < period+1) return null;
+    let gainSum=0, lossSum=0;
+    for(let i=1;i<=period;i++){
+      const diff=closes[i]-closes[i-1];
+      if(diff>=0) gainSum+=diff; else lossSum-=diff;
+    }
+    let avgGain=gainSum/period, avgLoss=lossSum/period;
+    for(let i=period+1;i<closes.length;i++){
+      const diff=closes[i]-closes[i-1];
+      const gain= diff>0?diff:0;
+      const loss= diff<0?-diff:0;
+      avgGain=(avgGain*(period-1)+gain)/period;
+      avgLoss=(avgLoss*(period-1)+loss)/period;
+    }
+    if(avgLoss===0) return 100;
+    const rs = avgGain/avgLoss;
+    return 100 - 100/(1+rs);
+  }
+
+  // --- DATA FETCHING ----------------------------------------------------------
+  const getDataSource = s=> s.includes('_')?'OANDA':'Binance';
+
+  async function fetchMarketData(){
+    if(symbolsOrder.length===0){ updateMarketTable({}); return; }
+    showLoading(); refreshBtn.disabled=true;
+
+    const promises = symbolsOrder.map(getSymbolData);
+    const results  = await Promise.all(promises);
+    const marketData={};
+    results.forEach((d,i)=>{ marketData[symbolsOrder[i]] = d; });
+
+    updateMarketTable(marketData);
+    lastUpdateSpan.textContent=`อัปเดตล่าสุด: ${new Date().toLocaleTimeString('th-TH')}`;
+    hideLoading(); refreshBtn.disabled=false;
+  }
+
+  function getSymbolData(sym){ return getDataSource(sym)==='Binance'? getBinanceData(sym): getOandaData(sym); }
+
+  async function getBinanceData(symbol){
+    try{
+      const endpoints=[
+        fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`),
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1d&startTime=${getStartOfYearTimestamp()}&limit=1`),
+        ...Object.values(BINANCE_TIME_FRAMES).map(tf=> fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=${KLINE_LIMIT}`))
+      ];
+      const [tickerRes,ytdRes,...klineRes] = await Promise.all(endpoints);
+      if(!tickerRes.ok) throw new Error(`ไม่พบเหรียญ ${symbol}`);
+
+      const tickerData=await tickerRes.json();
+      const price = parseFloat(tickerData.lastPrice);
+      const percentChange = parseFloat(tickerData.priceChangePercent);
+
+      let ytdChange=null;
+      const ytdData=await ytdRes.json();
+      if(ytdData.length>0){ const startPrice=parseFloat(ytdData[0][4]); ytdChange=((price-startPrice)/startPrice)*100; }
+
+      const rsiValues={};
+      const klineDataArr = await Promise.all(klineRes.map(r=> r.json()));
+      Object.keys(BINANCE_TIME_FRAMES).forEach((tf,i)=>{
+        const closes=prepareBinanceCloses(klineDataArr[i]);
+        rsiValues[tf]=calculateRSI(closes);
+      });
+      return {price,percentChange,ytdChange,rsi:rsiValues,error:false};
+    }catch(e){ return {error:true,message:e.message}; }
+  }
+
+  async function getOandaData(symbol){
+    const headers={ 'Authorization':`Bearer ${OANDA_API_KEY}` };
+    try{
+      const requests=[
+        fetch(`${OANDA_API_URL}/accounts/${OANDA_ACCOUNT_ID}/pricing?instruments=${symbol}`,{headers}),
+        ...Object.values(OANDA_TIME_FRAMES).map(tf=> fetch(`${OANDA_API_URL}/instruments/${symbol}/candles?price=M&granularity=${tf}&count=${KLINE_LIMIT}`,{headers})),
+        fetch(`${OANDA_API_URL}/instruments/${symbol}/candles?price=M&granularity=D&from=${new Date(getStartOfYearTimestamp()).toISOString()}&count=1`,{headers}),
+        fetch(`${OANDA_API_URL}/instruments/${symbol}/candles?price=M&granularity=D&count=2`,{headers})
+      ];
+      const [priceRes,...others]=await Promise.all(requests);
+      if(!priceRes.ok) throw new Error(`OANDA: ไม่พบข้อมูล ${symbol}`);
+      const priceJson=await priceRes.json();
+      const ask=parseFloat(priceJson.prices[0].asks[0].price);
+      const bid=parseFloat(priceJson.prices[0].bids[0].price);
+      const price=(ask+bid)/2;
+
+      const rsiCandleJsons=await Promise.all(others.slice(0,4).map(r=>r.json()));
+      const ytdJson = await others[4].json();
+      const dailyJson = await others[5].json();
+
+      // 24h change
+      let percentChange=0;
+      if(dailyJson.candles && dailyJson.candles.length>1){
+        const prevClose=parseFloat(dailyJson.candles.find(c=>c.complete).mid.c);
+        percentChange=((price-prevClose)/prevClose)*100;
+      }
+      // YTD
+      let ytdChange=null;
+      if(ytdJson.candles && ytdJson.candles.length>0 && ytdJson.candles[0].complete){
+        const startPrice=parseFloat(ytdJson.candles[0].mid.c);
+        ytdChange=((price-startPrice)/startPrice)*100;
+      }
+
+      const rsiValues={};
+      Object.keys(OANDA_TIME_FRAMES).forEach((tf,i)=>{
+        const closes=prepareOandaCloses(rsiCandleJsons[i].candles);
+        rsiValues[tf]=calculateRSI(closes);
+      });
+      return {price,percentChange,ytdChange,rsi:rsiValues,error:false};
+    }catch(e){ return {error:true,message:e.message}; }
+  }
+
+  // --- TABLE RENDERING --------------------------------------------------------
+  function updateMarketTable(data){
+    tableBody.innerHTML='';
+    if(symbolsOrder.length===0){ tableBody.innerHTML='<tr><td colspan="9" class="text-center py-1 text-gray-500">กรุณาเพิ่ม Symbol ที่ต้องการติดตาม</td></tr>'; return; }
+
+    symbolsOrder.forEach((sym,idx)=>{
+      const d=data[sym];
+      const tr=document.createElement('tr');
+      tr.className='market-row';
+      const source=getDataSource(sym);
+      const tag= source==='Binance'? '<span class="data-source-tag binance-tag">Crypto</span>' : '<span class="data-source-tag oanda-tag">Forex</span>';
+
+      if(d && !d.error){
+        const changeCls = d.percentChange>0?'up': d.percentChange<0?'down':'neutral';
+        const ytdCls    = d.ytdChange>=0?'up':'down';
+        tr.innerHTML=`
+          <td class="px-3 py-1 font-bold text-gray-900"><div class="flex items-center space-x-2"><span>${sym.replace('_','/')}</span>${tag}</div></td>
+          <td class="px-3 py-1 text-right font-semibold">${formatPrice(d.price,source)}</td>
+          <td class="px-3 py-1 text-right font-semibold ${changeCls}">${formatPercentChange(d.percentChange)}</td>
+          <td class="px-3 py-1 text-right font-semibold ${ytdCls}">${d.ytdChange!==null?d.ytdChange.toFixed(2)+'%':'N/A'}</td>
+          ${Object.keys(BINANCE_TIME_FRAMES).map(tf=>`<td class="px-3 py-1 text-center"><span class="font-semibold ${getRsiClass(d.rsi[tf])}">${d.rsi[tf]!==null?d.rsi[tf].toFixed(1):'-'}</span></td>`).join('')}
+          <td class="px-3 py-1"><div class="flex items-center justify-center space-x-1">
+            <button class="action-btn text-gray-500 hover:text-blue-600" title="เลื่อนขึ้น" onclick="moveSymbol('${sym}',-1)" ${idx===0?'disabled':''}><ion-icon name="arrow-up-circle-outline" class="text-base"></ion-icon></button>
+            <button class="action-btn text-gray-500 hover:text-blue-600" title="เลื่อนลง" onclick="moveSymbol('${sym}',1)" ${idx===symbolsOrder.length-1?'disabled':''}><ion-icon name="arrow-down-circle-outline" class="text-base"></ion-icon></button>
+            <button class="action-btn text-gray-500 hover:text-red-600" title="ลบ" onclick="removeSymbol('${sym}')"><ion-icon name="trash-outline" class="text-base"></ion-icon></button>
+          </div></td>`;
+      }else{
+        tr.innerHTML=`<td class="px-3 py-1 font-bold text-gray-900"><div class="flex items-center space-x-2"><span>${sym.replace('_','/')}</span>${tag}</div></td><td class="px-3 py-1 text-center text-red-500" colspan="7">${d?d.message:'ไม่พบข้อมูล'}</td><td class="px-3 py-1 text-center"><button onclick="removeSymbol('${sym}')" class="action-btn text-gray-500 hover:text-red-600" title="ลบ"><ion-icon name="trash-outline" class="text-base"></ion-icon></button></td>`;
+      }
+      tableBody.appendChild(tr);
+    });
+  }
+
+  function getRsiClass(v){ if(v===null) return 'text-gray-500'; if(v>70) return 'up'; if(v<30) return 'down'; return 'text-gray-700'; }
+
+  // --- LIST MANIPULATION ------------------------------------------------------
+  function addSymbol(){ const sym=newSymbolInput.value.trim().toUpperCase(); if(!sym) return; if(symbolsOrder.includes(sym)){ alert('Symbol นี้มีอยู่ในรายการแล้ว'); return; } symbolsOrder.push(sym); saveSymbols(); newSymbolInput.value=''; fetchMarketData(); }
+  window.removeSymbol = sym=>{ if(confirm(`คุณต้องการลบ ${sym} ใช่หรือไม่?`)){ symbolsOrder=symbolsOrder.filter(s=>s!==sym); saveSymbols(); fetchMarketData(); } };
+  window.moveSymbol = (sym,dir)=>{ const idx=symbolsOrder.indexOf(sym); const newIdx=idx+dir; if(newIdx<0||newIdx>=symbolsOrder.length) return; [symbolsOrder[idx],symbolsOrder[newIdx]]=[symbolsOrder[newIdx],symbolsOrder[idx]]; saveSymbols(); fetchMarketData(); };
+
+  // --- UTILITIES --------------------------------------------------------------
+  const getStartOfYearTimestamp = ()=> new Date(new Date().getUTCFullYear(),0,1).getTime();
+  function formatPrice(p,src){ if(p===null||isNaN(p)) return 'N/A'; const max = src==='Binance' && p<1?8:4; return p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:max}); }
+  function formatPercentChange(pc){ if(pc===null||isNaN(pc)) return 'N/A'; return `${pc>=0?'+':''}${pc.toFixed(2)}%`; }
+  </script>
 </body>
 </html>
